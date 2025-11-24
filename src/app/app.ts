@@ -45,7 +45,8 @@ export class App implements AfterViewInit {
 
   selectShape(shape: string) {
     this.drag.set(false);
-    this.selectedShape.set(shape);
+    this.clearSelection();
+    this.selectedShape.set(this.selectedShape() === shape ? '' : shape);
   }
 
   selectColor(color: string) {
@@ -70,8 +71,7 @@ export class App implements AfterViewInit {
   private previewLayer!: Konva.Layer;
 
   // ADDED: layer used to draw selection rectangle
-  private selectionLayer!: Konva.Layer; // ADDED
-  private selectionRect!: Konva.Rect; // ADDED
+  private selectionLayer!: Konva.Layer; // ADDED  
 
   // TRANSADD: transformer instance
   private transformer!: Konva.Transformer; // TRANSADD
@@ -279,7 +279,7 @@ export class App implements AfterViewInit {
           fill: shape.fill,
           stroke: shape.stroke,
           strokeWidth: shape.strokeWidth,
-          draggable:false
+          draggable: this.drag()
         });
         (rect as any).isDrawable = true;
         rect.setAttr('shapeId', shape.id);
@@ -289,7 +289,7 @@ export class App implements AfterViewInit {
       case 'circle': {
         const cx = shape.x + shape.width! / 2;
         const cy = shape.y + shape.height! / 2;
-        const circ = new Konva.Circle({ x: cx, y: cy, radius: Math.min(shape.width!, shape.height!) / 2, fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, draggable:false });
+        const circ = new Konva.Circle({ x: cx, y: cy, radius: Math.min(shape.width!, shape.height!) / 2, fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, draggable: this.drag() });
         (circ as any).isDrawable = true;
         circ.setAttr('shapeId', shape.id);
         layer.add(circ);
@@ -298,7 +298,7 @@ export class App implements AfterViewInit {
       case 'ellipse': {
         const cx = shape.x + shape.width! / 2;
         const cy = shape.y + shape.height! / 2;
-        const el = new Konva.Ellipse({ x: cx, y: cy, radiusX: shape.width! / 2, radiusY: shape.height! / 2, fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, draggable:false });
+        const el = new Konva.Ellipse({ x: cx, y: cy, radiusX: shape.width! / 2, radiusY: shape.height! / 2, fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, draggable: this.drag() });
         (el as any).isDrawable = true;
         el.setAttr('shapeId', shape.id);
         layer.add(el);
@@ -310,7 +310,7 @@ export class App implements AfterViewInit {
         const sides = shape.type === 'triangle' ? 3 : shape.type === 'pentagon' ? 5 : 6;
         const cx = shape.x + shape.width! / 2;
         const cy = shape.y + shape.height! / 2;
-        const poly = new Konva.RegularPolygon({ x: cx, y: cy, sides, radius: Math.min(shape.width!, shape.height!) / 2, fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, draggable:false });
+        const poly = new Konva.RegularPolygon({ x: cx, y: cy, sides, radius: Math.min(shape.width!, shape.height!) / 2, fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, draggable: this.drag() });
         (poly as any).isDrawable = true;
         poly.setAttr('shapeId', shape.id);
         layer.add(poly);
@@ -321,7 +321,7 @@ export class App implements AfterViewInit {
         const midY = shape.y + shape.height! / 2;
         const diamond = new Konva.Line({
           points: [midX, shape.y, shape.x + shape.width!, midY, midX, shape.y + shape.height!, shape.x, midY],
-          fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, closed: true, draggable:false
+          fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, closed: true, draggable: this.drag()
         });
         (diamond as any).isDrawable = true;
         diamond.setAttr('shapeId', shape.id);
@@ -335,7 +335,7 @@ export class App implements AfterViewInit {
           strokeWidth: 5,
           lineCap: 'round',
           lineJoin: 'round',
-          draggable:false
+          draggable: this.drag()
         });
         (ln as any).isDrawable = true;
         ln.setAttr('shapeId', shape.id);
@@ -344,7 +344,7 @@ export class App implements AfterViewInit {
       }
     }
     layer.draw();
-  }
+  } 
 
   // ------------------------------
   // SELECTION LOGIC
@@ -441,6 +441,7 @@ export class App implements AfterViewInit {
     this.selectedShapeId = id;
     const node = this.layer.findOne((n: any) => n.getAttr && n.getAttr('shapeId') === id);
     if (!node) return;
+    this.selectedShape.set(''); // deselect drawing tool
     // TRANSADD: attach transformer to this node (replace dashed selection box)
     // do NOT destroy selectionLayer children (we keep transformer persistently)
     // attach node and show transformer
@@ -458,24 +459,7 @@ export class App implements AfterViewInit {
     }
     // keep any other selectionLayer visuals intact - do not destroy transformer accidentally
     this.selectionLayer.batchDraw();
-  }
-
-  private drawSelectionBox(node: Konva.Node) {
-    // NOTE: function kept (per your request not to remove comments). In option A we are using transformer instead, so this function is not used as the main selection visual.
-    this.selectionLayer.destroyChildren();
-    const rect = node.getClientRect({ relativeTo: this.layer });
-    this.selectionRect = new Konva.Rect({
-      x: rect.x - 6,
-      y: rect.y - 6,
-      width: rect.width + 12,
-      height: rect.height + 12,
-      stroke: 'orange',
-      dash: [6, 4],
-      strokeWidth: 2,
-      listening: false
-    });
-    this.selectionLayer.add(this.selectionRect);
-    this.selectionLayer.draw();
+    
   }
 
   // ------------------------------
@@ -621,21 +605,6 @@ export class App implements AfterViewInit {
       this.transformer.nodes([]);
       this.transformer.hide();
     }
-    this.redrawAll();
-  }
-  // totos : delete after edit without pushing the deleted object in history stack
-  deleteAfterEdit(id:String) {
-    // if (!this.selectedShapeId) return;
-    const idx = this.shapes.findIndex(s => s.id === id);
-    if (idx === -1) return;
-
-    const removed = this.shapes.splice(idx, 1)[0];
-
-    // // ADDED: record delete action for undo/redo
-    // this.historyStack.push({ type: 'edit', shape: removed });
-    // this.redoStack = []; // clear redo on new action
-    console.log("history stack: after delete for edit: " ,this.historyStack);
-    this.selectedShapeId = null;
     this.redrawAll();
   }
 
