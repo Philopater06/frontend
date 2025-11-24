@@ -812,17 +812,6 @@ export class App implements AfterViewInit {
       return;
     }
 
-
-
-
-
-
-
-
-
-
-    
-
     // fallback: try bounding box
     const rect = node.getClientRect({ relativeTo: this.layer });
     shape.x = rect.x;
