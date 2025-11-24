@@ -279,7 +279,7 @@ export class App implements AfterViewInit {
           fill: shape.fill,
           stroke: shape.stroke,
           strokeWidth: shape.strokeWidth,
-          draggable:false
+          draggable:this.drag()
         });
         (rect as any).isDrawable = true;
         rect.setAttr('shapeId', shape.id);
@@ -289,7 +289,7 @@ export class App implements AfterViewInit {
       case 'circle': {
         const cx = shape.x + shape.width! / 2;
         const cy = shape.y + shape.height! / 2;
-        const circ = new Konva.Circle({ x: cx, y: cy, radius: Math.min(shape.width!, shape.height!) / 2, fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, draggable:false });
+        const circ = new Konva.Circle({ x: cx, y: cy, radius: Math.min(shape.width!, shape.height!) / 2, fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, draggable:this.drag() });
         (circ as any).isDrawable = true;
         circ.setAttr('shapeId', shape.id);
         layer.add(circ);
@@ -298,7 +298,7 @@ export class App implements AfterViewInit {
       case 'ellipse': {
         const cx = shape.x + shape.width! / 2;
         const cy = shape.y + shape.height! / 2;
-        const el = new Konva.Ellipse({ x: cx, y: cy, radiusX: shape.width! / 2, radiusY: shape.height! / 2, fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, draggable:false });
+        const el = new Konva.Ellipse({ x: cx, y: cy, radiusX: shape.width! / 2, radiusY: shape.height! / 2, fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, draggable:this.drag() });
         (el as any).isDrawable = true;
         el.setAttr('shapeId', shape.id);
         layer.add(el);
@@ -310,7 +310,7 @@ export class App implements AfterViewInit {
         const sides = shape.type === 'triangle' ? 3 : shape.type === 'pentagon' ? 5 : 6;
         const cx = shape.x + shape.width! / 2;
         const cy = shape.y + shape.height! / 2;
-        const poly = new Konva.RegularPolygon({ x: cx, y: cy, sides, radius: Math.min(shape.width!, shape.height!) / 2, fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, draggable:false });
+        const poly = new Konva.RegularPolygon({ x: cx, y: cy, sides, radius: Math.min(shape.width!, shape.height!) / 2, fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, draggable:this.drag() });
         (poly as any).isDrawable = true;
         poly.setAttr('shapeId', shape.id);
         layer.add(poly);
@@ -321,7 +321,7 @@ export class App implements AfterViewInit {
         const midY = shape.y + shape.height! / 2;
         const diamond = new Konva.Line({
           points: [midX, shape.y, shape.x + shape.width!, midY, midX, shape.y + shape.height!, shape.x, midY],
-          fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, closed: true, draggable:false
+          fill: shape.fill, stroke: shape.stroke, strokeWidth: shape.strokeWidth, closed: true, draggable:this.drag()
         });
         (diamond as any).isDrawable = true;
         diamond.setAttr('shapeId', shape.id);
@@ -335,7 +335,7 @@ export class App implements AfterViewInit {
           strokeWidth: 5,
           lineCap: 'round',
           lineJoin: 'round',
-          draggable:false
+          draggable:this.drag()
         });
         (ln as any).isDrawable = true;
         ln.setAttr('shapeId', shape.id);
@@ -356,7 +356,7 @@ export class App implements AfterViewInit {
       return;
     }
     // totos1: dragging functionality
-
+    console.log("draggability",(target as any).getAttr?.('draggable'))
     // totos1: end of edit
     const shapeId = (target as any).getAttr?.('shapeId');
     if (shapeId) this.selectShapeById(shapeId);
@@ -372,67 +372,27 @@ export class App implements AfterViewInit {
     if (!shapeId) return;
     const shape = this.shapes.find(s => s.id === shapeId);
     if (!shape) return;
-    
-    const pos = this.stage.getPointerPosition()!;
-    if(this.iscongruentDragged(target,shape)){
+
+    const before = this.CopyForEdit(shape);
+    this.updateShapeDataFromNode(target); 
+
+    const after = shape;
+    const pointsEqual = JSON.stringify(before.points ?? []) === JSON.stringify(after.points ?? []);
+    const unchanged =
+      before.x === after.x &&
+      before.y === after.y &&
+      before.width === after.width &&
+      before.height === after.height &&
+      before.fill === after.fill &&
+      pointsEqual;
+
+    if (unchanged) {
       return;
     }
-    
-    // record edit for history
-    this.historyStack.push({ type: 'edit', shape: this.CopyForEdit(shape) });
-    console.log("history stack: after dragging edit: " ,this.historyStack);
-    this.redoStack = []; // clear redo on edit
 
+    this.historyStack.push({ type: 'edit', shape: before });
+    this.redoStack = []; 
     this.redrawAll();
-  }
-  
-  iscongruentDragged(target:any,shape:ShapeData):boolean{
-    if (target instanceof Konva.Rect) {
-      const n = target as Konva.Rect;
-      if(shape.x===n.x() && shape.y===n.y()){
-        return true;
-      }
-      shape.x = n.x();
-      shape.y = n.y();
-      return false;
-    }
-    if (target instanceof Konva.RegularPolygon) {
-      const n = target as Konva.RegularPolygon;
-      if(shape.x===n.x() && shape.y===n.y()){
-        return true;
-      }
-      shape.x = n.x();
-      shape.y = n.y();
-      return false;
-    }
-    if (target instanceof Konva.Ellipse) {
-      const n = target as Konva.Ellipse;
-      if(shape.x===n.x() && shape.y===n.y()){
-        return true;
-      }
-      shape.x = n.x();
-      shape.y = n.y();
-      return false;
-    }
-    if (target instanceof Konva.Line) {
-      const n = target as Konva.Line;
-      if(shape.x===n.x() && shape.y===n.y()){
-        return true;
-      }
-      shape.x = n.x();
-      shape.y = n.y();
-      return false;
-    }
-    if (target instanceof Konva.Circle) {
-      const n = target as Konva.Circle;
-      if(shape.x===n.x() && shape.y===n.y()){
-        return true;
-      } 
-      shape.x = n.x();
-      shape.y = n.y();
-      return false;
-    }
-    return true;
   }
   // totos1: end of edit
 
@@ -801,11 +761,12 @@ export class App implements AfterViewInit {
       // If the line is closed (diamond/polygon) use its bounding rect
       if ((n as any).closed && (n as any).closed()) {
         const rect = n.getClientRect({ relativeTo: this.layer });
+        const stroke = (n.strokeWidth && n.strokeWidth()) ? n.strokeWidth() : 0;
+        // remove stroke contribution and guard against negative
         shape.x = rect.x;
         shape.y = rect.y;
-        shape.width = rect.width;
-        shape.height = rect.height;
-        // reset any scales (just in case)
+        shape.width = Math.max(0, rect.width - stroke);
+        shape.height = Math.max(0, rect.height - stroke);
         n.scaleX(1);
         n.scaleY(1);
         return;
