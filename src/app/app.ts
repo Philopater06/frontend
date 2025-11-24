@@ -808,16 +808,37 @@ export class App implements AfterViewInit {
         // reset any scales (just in case)
         n.scaleX(1);
         n.scaleY(1);
+        return;
+      }
+ 
+      // For open lines (polylines) we must persist transformed points.
+      const pts = n.points();
+      if (pts && pts.length >= 2) {
+        // Map local points through the node's absolute transform to get stage coordinates
+        const abs = n.getAbsoluteTransform();
+        const newPoints: number[] = [];
+        for (let i = 0; i < pts.length; i += 2) {
+          const p = abs.point({ x: pts[i], y: pts[i + 1] });
+          newPoints.push(p.x, p.y);
+        }
+ 
+        // Update model with absolute points and bounding box
+        shape.points = newPoints;
+        const rect = n.getClientRect({ relativeTo: this.layer });
+        shape.x = rect.x;
+        shape.y = rect.y;
+        shape.width = rect.width;
+        shape.height = rect.height;
+ 
+        // Write absolute points back to the node and clear transforms so node coordinates are canonical
+        n.points(newPoints);
+        n.x(0);
+        n.y(0);
+        n.scaleX(1);
+        n.scaleY(1);
       }
       return;
     }
-
-    // fallback: try bounding box
-    const rect = node.getClientRect({ relativeTo: this.layer });
-    shape.x = rect.x;
-    shape.y = rect.y;
-    shape.width = rect.width;
-    shape.height = rect.height;
   } // TRANSADD
-
+ 
 }
