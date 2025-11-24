@@ -79,6 +79,7 @@ export class App implements AfterViewInit {
   private startX = 0; private startY = 0;
   private endX = 0; private endY = 0;
   private isDrawing = false;
+  private isDragging = false;
 
   private shapes: ShapeData[] = [];
 
@@ -148,8 +149,21 @@ export class App implements AfterViewInit {
       // ------------------------------
       // Mouse events for drawing
       // ------------------------------
-      this.stage.on('mousedown', e => this.onMouseDown(e));
-      this.stage.on('mouseup', e => this.onMouseUp(e));
+      this.stage.on('mousedown', e => {
+        if(this.drag()){
+          this.isDragging = true;
+          console.log(this.isDragging)
+          return;
+        }
+        this.onMouseDown(e)
+      });
+      this.stage.on('mouseup', e => {
+        if(this.drag()){
+          this.onShapeDragEnd(e);
+          return;
+        }
+        this.onMouseUp(e)
+      });
       this.stage.on('mousemove', e => this.onMouseMove(e));
 
       // ADDED: click handler to select shapes
@@ -190,7 +204,6 @@ export class App implements AfterViewInit {
 
     const pos = this.stage.getPointerPosition()!;
     this.endX = pos.x; this.endY = pos.y;
-
     if (this.startX === this.endX && this.startY === this.endY) {
       this.previewLayer.destroyChildren();
       return; // no shape drawn
@@ -198,6 +211,11 @@ export class App implements AfterViewInit {
     const shapeData = this.createShapeData();
     this.shapes.push(this.CopyForEdit(shapeData));
 
+    if(this.drag()){
+      this.historyStack.push({ type: 'edit', shape: this.CopyForEdit(shapeData) });
+    }
+    console.log("shapes array after drawing:",this.shapes)
+    console.log("history stack: after drawing: " ,this.historyStack);
     // ADDED: record draw action for undo/redo
     this.historyStack.push({ type: 'draw', shape: this.CopyForEdit(shapeData) });
     this.redoStack = []; // clear redo on new action
@@ -337,10 +355,87 @@ export class App implements AfterViewInit {
       this.clearSelection();
       return;
     }
+    // totos1: dragging functionality
+
+    // totos1: end of edit
     const shapeId = (target as any).getAttr?.('shapeId');
     if (shapeId) this.selectShapeById(shapeId);
     else this.clearSelection();
   }
+
+  // totos1: dragging functionality
+  private onShapeDragEnd(e: Konva.KonvaEventObject<MouseEvent>) {
+    if (!this.isDragging) return;
+    this.isDragging = false;
+    const target = e.target;
+    const shapeId = (target as any).getAttr?.('shapeId');
+    if (!shapeId) return;
+    const shape = this.shapes.find(s => s.id === shapeId);
+    if (!shape) return;
+    
+    const pos = this.stage.getPointerPosition()!;
+    if(this.iscongruentDragged(target,shape)){
+      return;
+    }
+    
+    // record edit for history
+    this.historyStack.push({ type: 'edit', shape: this.CopyForEdit(shape) });
+    console.log("history stack: after dragging edit: " ,this.historyStack);
+    this.redoStack = []; // clear redo on edit
+
+    this.redrawAll();
+  }
+  
+  iscongruentDragged(target:any,shape:ShapeData):boolean{
+    if (target instanceof Konva.Rect) {
+      const n = target as Konva.Rect;
+      if(shape.x===n.x() && shape.y===n.y()){
+        return true;
+      }
+      shape.x = n.x();
+      shape.y = n.y();
+      return false;
+    }
+    if (target instanceof Konva.RegularPolygon) {
+      const n = target as Konva.RegularPolygon;
+      if(shape.x===n.x() && shape.y===n.y()){
+        return true;
+      }
+      shape.x = n.x();
+      shape.y = n.y();
+      return false;
+    }
+    if (target instanceof Konva.Ellipse) {
+      const n = target as Konva.Ellipse;
+      if(shape.x===n.x() && shape.y===n.y()){
+        return true;
+      }
+      shape.x = n.x();
+      shape.y = n.y();
+      return false;
+    }
+    if (target instanceof Konva.Line) {
+      const n = target as Konva.Line;
+      if(shape.x===n.x() && shape.y===n.y()){
+        return true;
+      }
+      shape.x = n.x();
+      shape.y = n.y();
+      return false;
+    }
+    if (target instanceof Konva.Circle) {
+      const n = target as Konva.Circle;
+      if(shape.x===n.x() && shape.y===n.y()){
+        return true;
+      } 
+      shape.x = n.x();
+      shape.y = n.y();
+      return false;
+    }
+    return true;
+  }
+  // totos1: end of edit
+
 
   private selectShapeById(id: string) {
     this.selectedShapeId = id;
@@ -363,24 +458,6 @@ export class App implements AfterViewInit {
     }
     // keep any other selectionLayer visuals intact - do not destroy transformer accidentally
     this.selectionLayer.batchDraw();
-  }
-
-  private drawSelectionBox(node: Konva.Node) {
-    // NOTE: function kept (per your request not to remove comments). In option A we are using transformer instead, so this function is not used as the main selection visual.
-    this.selectionLayer.destroyChildren();
-    const rect = node.getClientRect({ relativeTo: this.layer });
-    this.selectionRect = new Konva.Rect({
-      x: rect.x - 6,
-      y: rect.y - 6,
-      width: rect.width + 12,
-      height: rect.height + 12,
-      stroke: 'orange',
-      dash: [6, 4],
-      strokeWidth: 2,
-      listening: false
-    });
-    this.selectionLayer.add(this.selectionRect);
-    this.selectionLayer.draw();
   }
 
   // ------------------------------
@@ -416,6 +493,9 @@ export class App implements AfterViewInit {
             this.shapes.find(s=>{
               if(s.id===lastAction.shape.id)
                 s.fill=this.historyStack[i].shape.fill;
+                s.x=this.historyStack[i].shape.x;
+                s.y=this.historyStack[i].shape.y;
+
               return;
             })
             break;
@@ -466,6 +546,9 @@ export class App implements AfterViewInit {
         this.shapes.find(s=>{
           if(s.id===action.shape.id)
             s.fill=action.shape.fill;
+            s.x=action.shape.x;
+            s.y=action.shape.y;
+
           return;
         })
         break;
@@ -712,16 +795,6 @@ export class App implements AfterViewInit {
       return;
     }
 
-
-
-
-
-
-
-
-
-
-    
 
     // fallback: try bounding box
     const rect = node.getClientRect({ relativeTo: this.layer });
