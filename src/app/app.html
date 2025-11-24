@@ -1,0 +1,107 @@
+<div class="h-[25vh] bg-[#22201B] flex justify-evenly pl-4 pr-4">
+  
+  <div class="flex flex-col h-full justify-center gap-4 py-4 pr-2">
+    <button class="bg-gray-100 text-gray-900 w-25 p-1 rounded hover:bg-gray-300 transition duration-150">Save as XML</button>
+    <button class="bg-gray-100 text-gray-900 w-25 p-1 rounded hover:bg-gray-300 transition duration-150">Save as JSON</button>
+  </div>
+
+  <div class="flex flex-col h-full justify-center py-4 px-2">
+     <button [ngClass]="{'!border-green-500 border-4': drag()===true}" (click)="dragging()"
+      class="w-12 h-12 bg-gray-100 text-gray-900 rounded hover:bg-gray-300 active:bg-gray-400 transition duration-150 flex items-center justify-center border-2 border-transparent">
+      <span class="text-3xl">✋</span>
+    </button>
+  </div>
+
+  <div class="w-auto h-auto bg-[#22201B] my-4 ml-2 border border-gray-100 rounded grid grid-cols-3 gap-2 p-1">
+    <button [ngClass]="{'bg-gray-600': selectedShape() === 'square'}" (click)="selectShape('square')"
+      class="w-8 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition duration-150 text-gray-100">
+      <span class="text-2xl">◻</span>
+    </button>
+
+    <button [ngClass]="{'bg-gray-600': selectedShape() === 'rectangle'}" (click)="selectShape('rectangle')"
+      class="w-8 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition duration-150 text-gray-100">
+      <span class="text-2xl transform scale-x-150">□</span>
+    </button>
+
+    <button [ngClass]="{'bg-gray-600': selectedShape() === 'triangle'}" (click)="selectShape('triangle')"
+      class="w-8 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition duration-150 text-gray-100">
+      <span class="text-2xl">△</span>
+    </button>
+
+    <button [ngClass]="{'bg-gray-600': selectedShape() === 'circle'}" (click)="selectShape('circle')"
+      class="w-8 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition duration-150 text-gray-100">
+      <span class="text-2xl">○</span>
+    </button>
+
+    <button [ngClass]="{'bg-gray-600': selectedShape() === 'ellipse'}" (click)="selectShape('ellipse')"
+      class="w-8 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition duration-150 text-gray-100">
+      <span class="text-2xl transform scale-y-150">○</span>
+    </button>
+
+    <button [ngClass]="{'bg-gray-600': selectedShape() === 'pentagon'}" (click)="selectShape('pentagon')"
+      class="w-8 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition duration-150 text-gray-100">
+      <span class="text-2xl">⬠</span>
+    </button>
+
+    <button [ngClass]="{'bg-gray-600': selectedShape() === 'hexagon'}" (click)="selectShape('hexagon')"
+      class="w-8 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition duration-150 text-gray-100">
+      <span class="text-2xl">⬡</span>
+    </button>
+
+    <button [ngClass]="{'bg-gray-600': selectedShape() === 'diamond'}" (click)="selectShape('diamond')"
+      class="w-8 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition duration-150 text-gray-100">
+      <span class="text-2xl">◇</span>
+    </button>
+
+    <button [ngClass]="{'bg-gray-600': selectedShape() === 'line'}" (click)="selectShape('line')"
+      class="w-8 h-8 flex items-center justify-center hover:bg-gray-700 rounded transition duration-150 text-gray-100">
+      <span class="text-2xl scale-x-75 scale-y-75">/</span>
+    </button>
+  </div>
+
+  <div>
+    <div class="flex flex-row h-full items-center justify-center gap-4 py-4">
+      <div class="flex flex-col items-center">
+
+        <div class="grid grid-cols-10 gap-1">
+          @for (color of colors; track $index) {
+          <button (click)="selectColor(color)" [ngClass]="{ 'ring-2 ring-orange-400': selectedColor() === color }"
+            class="w-5 h-5 rounded-full border transition duration-150" [class]="color"></button>
+          }
+        </div>
+
+        <div class="mt-4 text-gray-100 text-sm flex flex-row items-center gap-2">
+          <span class="text-xl">🎨</span>
+          <span>Colors</span>
+        </div>
+
+        <button (click)="deleteSelected()"
+          class="mt-2 w-full bg-red-600 text-white p-1 rounded hover:bg-red-700 transition duration-150">
+          Delete Selected
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-1 p-4 col-span-1">
+    <div class="flex flex-row justify-center items-center gap-4 py-4 pl-4 text-gray-100">
+      <span class="cursor-pointer hover:text-gray-300 text-xl" (click)="undo()">↺</span>
+      <span class="cursor-pointer hover:text-gray-300 text-xl" (click)="redo()">↻</span>
+    </div>
+    <div class="flex flex-row h-full justify-center gap-4 py-4 pl-4 col-span-1 text-gray-100">
+      <button class="bg-gray-100 text-gray-900 w-[7vw] p-1 rounded hover:bg-gray-300 transition duration-150">Dummy</button>
+    </div>
+    <div class="flex flex-row h-full justify-center gap-4 py-4 pl-4 col-span-1 text-gray-100">
+      <button class="bg-gray-100 text-gray-900 w-[7vw] p-1 rounded hover:bg-gray-300 transition duration-150"
+        (click)="changeColor()">Apply Color</button>
+    </div>
+    <div class="flex flex-row h-full justify-center gap-4 py-4 pl-4 col-span-1 text-gray-100">
+      <button class="bg-gray-100 text-gray-900 w-[7vw] rounded hover:bg-gray-300 transition duration-150"
+        (click)="copy()">copy</button>
+    </div>
+  </div>
+</div>
+
+<div class="h-[74.9vh] w-[99.9vw] border border-gray-500 rounded bg-white" #canvasContainer>
+</div>
