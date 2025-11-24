@@ -140,7 +140,7 @@ export class App implements AfterViewInit {
         const id = (node as any).getAttr && (node as any).getAttr('shapeId');
         const shape = this.shapes.find(s => s.id === id);
         if (shape) {
-          this.historyStack.push({ type: 'edit', shape: this.CopyForEdit(shape) }); // TRANSADD
+          // this.historyStack.push({ type: 'edit', shape: this.CopyForEdit(shape) }); // TRANSADD
           this.redoStack = []; // clear redo on edit
         }
         this.redrawAll(); // TRANSADD
@@ -460,6 +460,24 @@ export class App implements AfterViewInit {
     this.selectionLayer.batchDraw();
   }
 
+  private drawSelectionBox(node: Konva.Node) {
+    // NOTE: function kept (per your request not to remove comments). In option A we are using transformer instead, so this function is not used as the main selection visual.
+    this.selectionLayer.destroyChildren();
+    const rect = node.getClientRect({ relativeTo: this.layer });
+    this.selectionRect = new Konva.Rect({
+      x: rect.x - 6,
+      y: rect.y - 6,
+      width: rect.width + 12,
+      height: rect.height + 12,
+      stroke: 'orange',
+      dash: [6, 4],
+      strokeWidth: 2,
+      listening: false
+    });
+    this.selectionLayer.add(this.selectionRect);
+    this.selectionLayer.draw();
+  }
+
   // ------------------------------
   // UNDO / REDO
   // ------------------------------
@@ -588,7 +606,7 @@ export class App implements AfterViewInit {
   // ------------------------------
   deleteSelected() {
     if (!this.selectedShapeId) return;
-    const idx = this.shapes.findIndex(s => s.id === this.selectedShapeId);
+    const idx = this.shapes.findIndex(s => s.id === this.selectedShapeId); 
     if (idx === -1) return;
 
     const removed = this.shapes.splice(idx, 1)[0];
@@ -780,9 +798,8 @@ export class App implements AfterViewInit {
     // handle Line or diamond (lines with closed true)
     if (node instanceof Konva.Line) {
       const n = node as Konva.Line;
-      // For generic lines we won't try to recalculate points precisely on resize - skip
-      // but for diamond (closed lines forming polygon) we can attempt a bounding rect update
-      if ((n as any).closed()) {
+      // If the line is closed (diamond/polygon) use its bounding rect
+      if ((n as any).closed && (n as any).closed()) {
         const rect = n.getClientRect({ relativeTo: this.layer });
         shape.x = rect.x;
         shape.y = rect.y;
@@ -795,6 +812,16 @@ export class App implements AfterViewInit {
       return;
     }
 
+
+
+
+
+
+
+
+
+
+    
 
     // fallback: try bounding box
     const rect = node.getClientRect({ relativeTo: this.layer });
