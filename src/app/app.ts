@@ -41,7 +41,7 @@ export class App implements AfterViewInit {
   selectedColor = signal('bg-[#000000]');
 
   //totos:drag boolean: to detect weather the user is drawing or dragging and resizing an object
-  drag=signal(false);
+  drag = signal(false);
 
   selectShape(shape: string) {
     this.drag.set(false);
@@ -52,16 +52,8 @@ export class App implements AfterViewInit {
   selectColor(color: string) {
     this.selectedColor.set(color);
   }
-  
-  //totos:dragMode
-  toggleDragMode(){
-    this.drag.set(!this.drag())
-    this.layer.getChildren().forEach((node) => {
-      if (node.className !== 'Transformer') {
-        node.draggable(this.drag());
-      }
-    });
-  }
+
+
 
   // ------------------------------
   // KONVA STATE
@@ -134,15 +126,20 @@ export class App implements AfterViewInit {
       this.transformer.on('transformend', () => {
         const nodes = this.transformer.nodes();
         if (!nodes || nodes.length === 0) return;
+        console.log("before resize", this.historyStack)
+        console.log("shapes before resize", this.shapes)
         const node = nodes[0];
         this.updateShapeDataFromNode(node); // TRANSADD
         // record edit for history
         const id = (node as any).getAttr && (node as any).getAttr('shapeId');
         const shape = this.shapes.find(s => s.id === id);
+
         if (shape) {
-          // this.historyStack.push({ type: 'edit', shape: this.CopyForEdit(shape) }); // TRANSADD
+          this.historyStack.push({ type: 'edit', shape: this.CopyForEdit(shape) }); // TRANSADD
           this.redoStack = []; // clear redo on edit
         }
+        console.log("after resize", this.historyStack)
+        console.log("shapes after resize", this.shapes)
         this.redrawAll(); // TRANSADD
       }); // TRANSADD
 
@@ -150,7 +147,7 @@ export class App implements AfterViewInit {
       // Mouse events for drawing
       // ------------------------------
       this.stage.on('mousedown', e => {
-        if(this.drag()){
+        if (this.drag()) {
           this.isDragging = true;
           console.log(this.isDragging)
           return;
@@ -158,7 +155,7 @@ export class App implements AfterViewInit {
         this.onMouseDown(e)
       });
       this.stage.on('mouseup', e => {
-        if(this.drag()){
+        if (this.drag()) {
           this.onShapeDragEnd(e);
           return;
         }
@@ -211,11 +208,11 @@ export class App implements AfterViewInit {
     const shapeData = this.createShapeData();
     this.shapes.push(this.CopyForEdit(shapeData));
 
-    if(this.drag()){
+    if (this.drag()) {
       this.historyStack.push({ type: 'edit', shape: this.CopyForEdit(shapeData) });
     }
-    console.log("shapes array after drawing:",this.shapes)
-    console.log("history stack: after drawing: " ,this.historyStack);
+    console.log("shapes array after drawing:", this.shapes)
+    console.log("history stack: after drawing: ", this.historyStack);
     // ADDED: record draw action for undo/redo
     this.historyStack.push({ type: 'draw', shape: this.CopyForEdit(shapeData) });
     this.redoStack = []; // clear redo on new action
@@ -263,7 +260,7 @@ export class App implements AfterViewInit {
 
     return { id, type, x, y, width, height, fill, stroke, strokeWidth };
   }
-  
+
 
   private drawShape(layer: Konva.Layer, isPreview = false, shapeData?: ShapeData) {
     const shape = shapeData || this.createShapeData();
@@ -344,7 +341,7 @@ export class App implements AfterViewInit {
       }
     }
     layer.draw();
-  } 
+  }
 
   // ------------------------------
   // SELECTION LOGIC
@@ -356,7 +353,7 @@ export class App implements AfterViewInit {
       return;
     }
     // totos1: dragging functionality
-    console.log("draggability",(target as any).getAttr?.('draggable'))
+    console.log("draggability", (target as any).getAttr?.('draggable'))
     // totos1: end of edit
     const shapeId = (target as any).getAttr?.('shapeId');
     if (shapeId) this.selectShapeById(shapeId);
@@ -374,7 +371,7 @@ export class App implements AfterViewInit {
     if (!shape) return;
 
     const before = this.CopyForEdit(shape);
-    this.updateShapeDataFromNode(target); 
+    this.updateShapeDataFromNode(target);
 
     const after = shape;
     const pointsEqual = JSON.stringify(before.points ?? []) === JSON.stringify(after.points ?? []);
@@ -390,8 +387,11 @@ export class App implements AfterViewInit {
       return;
     }
 
-    this.historyStack.push({ type: 'edit', shape: before });
-    this.redoStack = []; 
+    console.log("history stack: before dragging: ", this.historyStack);
+    console.log("shapes array after dragging:", this.shapes)
+    this.historyStack.push({ type: 'edit', shape: this.CopyForEdit(after) });
+    console.log("history stack: after dragging: ", this.historyStack);
+    this.redoStack = [];
     this.redrawAll();
   }
   // totos1: end of edit
@@ -419,7 +419,7 @@ export class App implements AfterViewInit {
     }
     // keep any other selectionLayer visuals intact - do not destroy transformer accidentally
     this.selectionLayer.batchDraw();
-    
+
   }
 
   // ------------------------------
@@ -432,41 +432,40 @@ export class App implements AfterViewInit {
     const lastAction = this.historyStack.pop()!;
     switch (lastAction.type) {
       case 'draw':
-
-        // // totos: get the last occurance of the shape with the same id and remove it
-        // for(let i=this.shapes.length-1;i>=0;i--){
-        //   if(this.shapes[i].id===lastAction.shape.id){
-        //     this.shapes.splice(i,1);
-        //     break;
-        //   }
-        // }
         this.shapes = this.shapes.filter(s => s.id !== lastAction.shape.id);
         break;
       case 'delete':
-        let shallowCopy=this.CopyForEdit(lastAction.shape);
+        let shallowCopy = this.CopyForEdit(lastAction.shape);
         this.shapes.push(shallowCopy);
         break;
 
       case 'edit':
         // this.deleteAfterEdit(lastAction.shape.id!)
         // totos: get the last occurance of the shape with the same id and remove it
-        for(let i=this.historyStack.length-1;i>=0;i--){
-          if(this.historyStack[i].shape.id===lastAction.shape.id){
-            this.shapes.find(s=>{
-              if(s.id===lastAction.shape.id)
-                s.fill=this.historyStack[i].shape.fill;
-                s.x=this.historyStack[i].shape.x;
-                s.y=this.historyStack[i].shape.y;
-
-              return;
+        for (let i = this.historyStack.length - 1; i >= 0; i--) {
+          if (this.historyStack[i].shape.id === lastAction.shape.id) {
+            this.shapes.find(s => {
+              if (s.id === lastAction.shape.id) {
+                if (lastAction.shape.type === 'line' && this.historyStack[i].shape.type === 'line') {
+                  s.points = this.historyStack[i].shape.points;
+                  return;
+                }
+                s.fill = this.historyStack[i].shape.fill;
+                s.x = this.historyStack[i].shape.x;
+                s.y = this.historyStack[i].shape.y;
+                s.width = this.historyStack[i].shape.width;
+                s.height = this.historyStack[i].shape.height;
+                return;
+              }
             })
             break;
           }
         }
 
     }
-    console.log("history stack: after undo: " ,this.historyStack);
-    console.log("redo stack: after redo: ",this.redoStack);
+    console.log("history stack: after undo: ", this.historyStack);
+    console.log("last action ", lastAction)
+    console.log("shapes array after undo:", this.shapes)
     this.redoStack.push(lastAction);
     this.redrawAll();
   }
@@ -478,18 +477,18 @@ export class App implements AfterViewInit {
     const action = this.redoStack.pop()!;
     switch (action.type) {
       case 'draw':
-        let shallowCopy=this.CopyForEdit(action.shape);
+        let shallowCopy = this.CopyForEdit(action.shape);
         this.shapes.push(shallowCopy);
         break;
       case 'delete':
 
-      // // totos: get the last occurance of the shape with the same id and remove it
-      //   for(let i=this.shapes.length-1;i>=0;i--){
-      //     if(this.shapes[i].id===action.shape.id){
-      //       this.shapes.splice(i,1);
-      //       break;
-      //     }
-      //   }
+        // // totos: get the last occurance of the shape with the same id and remove it
+        //   for(let i=this.shapes.length-1;i>=0;i--){
+        //     if(this.shapes[i].id===action.shape.id){
+        //       this.shapes.splice(i,1);
+        //       break;
+        //     }
+        //   }
         this.shapes = this.shapes.filter(s => s.id !== action.shape.id);
         break;
       case 'edit':
@@ -505,20 +504,27 @@ export class App implements AfterViewInit {
         //     break;
         //   }
         // }
-        this.shapes.find(s=>{
-          if(s.id===action.shape.id)
-            s.fill=action.shape.fill;
-            s.x=action.shape.x;
-            s.y=action.shape.y;
+        this.shapes.find(s => {
+          if (s.id === action.shape.id) {
+            if (action.shape.type === 'line' && s.type === 'line') {
+              s.points = action.shape.points;
+              return;
+            }
+            s.fill = action.shape.fill;
+            s.x = action.shape.x;
+            s.y = action.shape.y;
+            s.width = action.shape.width;
+            s.height = action.shape.height;
 
-          return;
+            return;
+          }
         })
         break;
     }
-    
+
     this.historyStack.push(action);
-    console.log("history stack: after redo: ",this.historyStack);
-    console.log("redo stack: after redo: ",this.redoStack);
+    console.log("history stack: after redo: ", this.historyStack);
+    console.log("redo stack: after redo: ", this.redoStack);
     this.redrawAll();
   }
 
@@ -550,7 +556,7 @@ export class App implements AfterViewInit {
   // ------------------------------
   deleteSelected() {
     if (!this.selectedShapeId) return;
-    const idx = this.shapes.findIndex(s => s.id === this.selectedShapeId); 
+    const idx = this.shapes.findIndex(s => s.id === this.selectedShapeId);
     if (idx === -1) return;
 
     const removed = this.shapes.splice(idx, 1)[0];
@@ -558,7 +564,7 @@ export class App implements AfterViewInit {
     // ADDED: record delete action for undo/redo
     this.historyStack.push({ type: 'delete', shape: removed });
     this.redoStack = []; // clear redo on new action
-    console.log("history stack: after delete:  " ,this.historyStack);
+    console.log("history stack: after delete:  ", this.historyStack);
     this.selectedShapeId = null;
     // TRANSADD: detach transformer when deleting selected shape
     if (this.transformer) {
@@ -577,19 +583,28 @@ export class App implements AfterViewInit {
     const shape = this.shapes.find(s => s.id === this.selectedShapeId);
     if (!shape) return;
 
-    let shallowCopy=this.CopyForEdit(shape);
+    let shallowCopy = this.CopyForEdit(shape);
     shallowCopy.fill = this.selectedColor().replace('bg-[', '').replace(']', '');
+    let notChanged = false;
+    this.shapes.find(s => {
+      if (s.id === shallowCopy.id) {
+        if (s.fill === shallowCopy.fill) {
+          notChanged = true
+        }
+        s.fill = shallowCopy.fill;
+        return;
+      }
+    })
+    if (notChanged) {
+      return;
+    }
     // this.deleteAfterEdit(shape.id!);
     this.historyStack.push({ type: 'edit', shape: shallowCopy });
-    
-    this.shapes.find(s=>{
-      if(s.id===shallowCopy.id)
-        s.fill=shallowCopy.fill;
-      return;
-    })
-    console.log("shapes array after changing color:",this.shapes)
+
+
+    console.log("shapes array after changing color:", this.shapes)
     // this.shapes.push(shallowCopy);
-    console.log("history stack:after changing color: " ,this.historyStack);
+    console.log("history stack:after changing color: ", this.historyStack);
 
     this.layer.destroyChildren();
     this.redrawAll();
@@ -603,36 +618,47 @@ export class App implements AfterViewInit {
 
   deepCopy(shape: ShapeData): ShapeData {
     return {
-       ...shape,x:shape.x+20,y:shape.y+20, id: `copy_${Date.now()}_${Math.floor(Math.random() * 10000)}`
+      ...shape, x: shape.x + 20, y: shape.y + 20, id: `copy_${Date.now()}_${Math.floor(Math.random() * 10000)}`
     };
   }
 
   CopyForEdit(shape: ShapeData): ShapeData {
-    return JSON.parse(JSON.stringify(shape)); 
+    return JSON.parse(JSON.stringify(shape));
   }
 
   // ------------------------------
   // tots: copy functionality 
   // ------------------------------
-  copy(){
+  copy() {
     if (!this.selectedShapeId) return;
     const shape = this.shapes.find(s => s.id === this.selectedShapeId);
     if (!shape) return;
-    let copy=this.deepCopy(shape);
-    const shallowCopy=this.CopyForEdit(copy);
+    let copy = this.deepCopy(shape);
+    const shallowCopy = this.CopyForEdit(copy);
     this.shapes.push(shallowCopy);
     this.historyStack.push({ type: 'draw', shape: shallowCopy });
-    this.selectedShapeId=shallowCopy.id!
+    this.selectedShapeId = shallowCopy.id!
     console.log(this.shapes);
-    this.redoStack=[];
+    this.redoStack = [];
     this.redrawAll();
   }
 
 
-  dragging(){
+  dragging() {
     this.toggleDragMode();
     this.selectedShape.set('');
   }
+
+  //totos:dragMode
+  toggleDragMode() {
+    this.drag.set(!this.drag())
+    this.layer.getChildren().forEach((node) => {
+      if (node.className !== 'Transformer') {
+        node.draggable(this.drag());
+      }
+    });
+  }
+
 
   //keyboard listeners integration
   @HostListener('window:keydown', ['$event'])
@@ -643,7 +669,7 @@ export class App implements AfterViewInit {
     if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'z') {
       this.redo();
     }
-    if (event.key=='Backspace') {
+    if (event.key == 'Backspace') {
       this.deleteSelected();
     }
   }
@@ -740,7 +766,7 @@ export class App implements AfterViewInit {
         n.scaleY(1);
         return;
       }
- 
+
       // For open lines (polylines) we must persist transformed points.
       const pts = n.points();
       if (pts && pts.length >= 2) {
@@ -751,7 +777,7 @@ export class App implements AfterViewInit {
           const p = abs.point({ x: pts[i], y: pts[i + 1] });
           newPoints.push(p.x, p.y);
         }
- 
+
         // Update model with absolute points and bounding box
         shape.points = newPoints;
         const rect = n.getClientRect({ relativeTo: this.layer });
@@ -759,7 +785,7 @@ export class App implements AfterViewInit {
         shape.y = rect.y;
         shape.width = rect.width;
         shape.height = rect.height;
- 
+
         // Write absolute points back to the node and clear transforms so node coordinates are canonical
         n.points(newPoints);
         n.x(0);
@@ -770,5 +796,5 @@ export class App implements AfterViewInit {
       return;
     }
   } // TRANSADD
- 
+
 }
